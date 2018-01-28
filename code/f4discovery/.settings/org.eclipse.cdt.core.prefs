@@ -1,0 +1,6 @@
+eclipse.preferences.version=1
+environment/project/ilg.gnuarmeclipse.managedbuild.cross.toolchain.base.669931512/PATH/delimiter=\:
+environment/project/ilg.gnuarmeclipse.managedbuild.cross.toolchain.base.669931512/PATH/operation=append
+environment/project/ilg.gnuarmeclipse.managedbuild.cross.toolchain.base.669931512/PATH/value=/home/ricardo/opt/gcc-arm-none-eabi-6-2017-q1-update/bin/
+environment/project/ilg.gnuarmeclipse.managedbuild.cross.toolchain.base.669931512/append=true
+environment/project/ilg.gnuarmeclipse.managedbuild.cross.toolchain.base.669931512/appendContributed=true
