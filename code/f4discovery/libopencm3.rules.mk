@@ -37,16 +37,11 @@ AR		:= $(PREFIX)-ar
 AS		:= $(PREFIX)-as
 OBJCOPY		:= $(PREFIX)-objcopy
 OBJDUMP		:= $(PREFIX)-objdump
+SIZE		:= $(PREFIX)-size
 OPT		:= -O0
-DEBUG		:= -ggdb3
-CSTD		?= -std=c99
+DEBUG		:= -g3 -ggdb
+CSTD		?= 
 
-
-###############################################################################
-# Source files
-
-C_SOURCES =  \
-miniblink.c
 
 
 OBJS = $(addprefix $(BIN_DIR)/,$(notdir $(C_SOURCES:.c=.o)))
@@ -104,6 +99,8 @@ TGT_CFLAGS	+= $(ARCH_FLAGS)
 TGT_CFLAGS	+= -Wextra -Wshadow -Wimplicit-function-declaration
 TGT_CFLAGS	+= -Wredundant-decls -Wmissing-prototypes -Wstrict-prototypes
 TGT_CFLAGS	+= -fno-common -ffunction-sections -fdata-sections
+TGT_CFLAGS  += -fmessage-length=0 -fsigned-char
+
 ###############################################################################
 # C++ flags
 
@@ -122,7 +119,7 @@ TGT_CPPFLAGS	+= $(DEFS)
 ###############################################################################
 # Linker flags
 
-TGT_LDFLAGS		+= --static -nostartfiles
+TGT_LDFLAGS		+= --static -nostartfiles -specs=nano.specs
 TGT_LDFLAGS		+= -T$(LDSCRIPT)
 TGT_LDFLAGS		+= $(ARCH_FLAGS) $(DEBUG)
 TGT_LDFLAGS		+= -Wl,-Map=$(BIN_DIR)/$(*).map -Wl,--cref
@@ -151,7 +148,7 @@ bin: $(BIN_DIR)/$(BINARY).bin
 hex: $(BIN_DIR)/$(BINARY).hex
 srec: $(BIN_DIR)/$(BINARY).srec
 list: $(BIN_DIR)/$(BINARY).list
-
+OBJDUMP		:= $(PREFIX)-objdump
 images: $(BINARY).images
 flash: $(BINARY).flash
 
@@ -194,6 +191,7 @@ $(BIN_DIR)/%.list: %.elf
 $(BIN_DIR)/%.elf %.map: $(OBJS) $(LDSCRIPT)
 	@#printf "  LD      $(*).elf\n"
 	$(Q)$(LD) $(TGT_LDFLAGS) $(LDFLAGS) $(OBJS) $(LDLIBS) -o $(BIN_DIR)/$(*).elf
+	$(SIZE) --format=berkeley $(BIN_DIR)/$(*).elf
 
 $(BIN_DIR)/%.o: %.c Makefile | $(BIN_DIR) 
 	@#printf "  CC      $(*).c\n"
@@ -204,7 +202,7 @@ $(BIN_DIR):
 
 clean:
 	@#printf "  CLEAN\n"
-	$(Q)$(RM) *.o *.d *.elf *.bin *.hex *.srec *.list *.map generated.* ${OBJS} ${OBJS:%.o:%.d}
+	-rm -fR .dep $(BIN_DIR)
 
 .PHONY: images clean stylecheck styleclean elf bin hex srec list
 

@@ -24,5 +24,13 @@ LDSCRIPT = stm32f407vg.ld
 
 TARGETS=stm32/f4
 
+
+###############################################################################
+# Source files
+
+C_SOURCES =  \
+miniblink.c
+
+
 include libopencm3.target.mk
 

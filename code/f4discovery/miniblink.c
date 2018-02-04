@@ -24,48 +24,50 @@
 static void gpio_setup(void)
 {
 	/* Enable GPIOD clock. */
-	/* Manually: */
-	// RCC_AHB1ENR |= RCC_AHB1ENR_IOPDEN;
-	/* Using API functions: */
 	rcc_periph_clock_enable(RCC_GPIOD);
 
 	/* Set GPIO12 (in GPIO port D) to 'output push-pull'. */
-	/* Manually: */
-	// GPIOD_CRH = (GPIO_CNF_OUTPUT_PUSHPULL << (((8 - 8) * 4) + 2));
-	// GPIOD_CRH |= (GPIO_MODE_OUTPUT_2_MHZ << ((8 - 8) * 4));
-	/* Using API functions: */
-	gpio_mode_setup(GPIOD, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO12);
+	gpio_mode_setup(GPIOD, GPIO_MODE_OUTPUT,
+			GPIO_PUPD_NONE, GPIO12 | GPIO13 | GPIO14 | GPIO15);
+}
+
+static void button_setup(void)
+{
+	/* Enable GPIOA clock. */
+	rcc_periph_clock_enable(RCC_GPIOA);
+
+	/* Set GPIOA0 to 'input floating'. */
+	gpio_mode_setup(GPIOA, GPIO_MODE_INPUT, GPIO_PUPD_NONE, GPIO0);
 }
 
 int main(void)
 {
-	int i;
+	volatile int i = 300;
+
+	rcc_clock_setup_hse_3v3(&rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_168MHZ]);
+
 
 	gpio_setup();
+	button_setup();
 
 	/* Blink the LED (PC8) on the board. */
 	while (1) {
-		/* Manually: */
-		// GPIOD_BSRR = GPIO12;		/* LED off */
-		// for (i = 0; i < 1000000; i++)	/* Wait a bit. */
-		//	__asm__("nop");
-		// GPIOD_BRR = GPIO12;		/* LED on */
-		// for (i = 0; i < 1000000; i++)	/* Wait a bit. */
-		//	__asm__("nop");
 
-		/* Using API functions gpio_set()/gpio_clear(): */
-		// gpio_set(GPIOD, GPIO12);	/* LED off */
-		// for (i = 0; i < 1000000; i++)	/* Wait a bit. */
-		//	__asm__("nop");
-		// gpio_clear(GPIOD, GPIO12);	/* LED on */
-		// for (i = 0; i < 1000000; i++)	/* Wait a bit. */
-		//	__asm__("nop");
+		/* Blink the LED (PD12) on the board. */
+			while (1) {
+				gpio_toggle(GPIOD, GPIO12);
 
-		/* Using API function gpio_toggle(): */
-		gpio_toggle(GPIOD, GPIO12);	/* LED on/off */
-		for (i = 0; i < 1000000; i++) {	/* Wait a bit. */
-			__asm__("nop");
-		}
+				/* Upon button press, blink more slowly. */
+				if (gpio_get(GPIOA, GPIO0)) {
+					for (i = 0; i < 3000000; i++) {	/* Wait a bit. */
+						__asm__("nop");
+					}
+				}
+
+				for (i = 0; i < 3000000; i++) {		/* Wait a bit. */
+					__asm__("nop");
+				}
+			}
 	}
 
 	return 0;
