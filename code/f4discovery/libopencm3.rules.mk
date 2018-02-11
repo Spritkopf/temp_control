@@ -195,7 +195,7 @@ $(BIN_DIR)/%.elf %.map: $(OBJS) $(LDSCRIPT)
 
 $(BIN_DIR)/%.o: %.c Makefile | $(BIN_DIR) 
 	@#printf "  CC      $(*).c\n"
-	$(Q)$(CC) $(TGT_CFLAGS) $(CFLAGS) $(TGT_CPPFLAGS) $(CPPFLAGS) -o $(BIN_DIR)/$(*).o -c $(*).c
+	$(Q)$(CC) $(TGT_CFLAGS) $(CFLAGS) $(TGT_CPPFLAGS) $(CPPFLAGS) -o $(BIN_DIR)/$(*).o -c $<
 
 $(BIN_DIR):
 	mkdir $@

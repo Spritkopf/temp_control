@@ -20,6 +20,16 @@
 
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
+#include <libopencm3/cm3/nvic.h>
+#include <libopencm3/cm3/systick.h>
+#include <libopencm3/stm32/exti.h>
+
+
+uint32_t tick = 0;
+
+/* sleep for delay milliseconds */
+static void delay(uint32_t delay_msec);
+
 
 static void gpio_setup(void)
 {
@@ -36,39 +46,70 @@ static void button_setup(void)
 	/* Enable GPIOA clock. */
 	rcc_periph_clock_enable(RCC_GPIOA);
 
+	nvic_enable_irq(NVIC_EXTI0_IRQ);
+	nvic_set_priority(NVIC_EXTI0_IRQ, 1);
+
 	/* Set GPIOA0 to 'input floating'. */
 	gpio_mode_setup(GPIOA, GPIO_MODE_INPUT, GPIO_PUPD_NONE, GPIO0);
+
+	exti_select_source(EXTI0, GPIOA);
+	exti_set_trigger(EXTI0, EXTI_TRIGGER_FALLING);
+	exti_enable_request(EXTI0);
+
+
 }
 
 int main(void)
 {
-	volatile int i = 300;
 
 	rcc_clock_setup_hse_3v3(&rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_168MHZ]);
 
+	systick_set_clocksource(STK_CSR_CLKSOURCE_AHB_DIV8);
+
+	systick_set_reload(21000);
+	systick_clear();
+
+	systick_interrupt_enable();
+
+	/* Start counting. */
+	systick_counter_enable();
 
 	gpio_setup();
 	button_setup();
 
-	/* Blink the LED (PC8) on the board. */
+
+	/* Blink the LED (PD12) on the board. */
 	while (1) {
+		gpio_toggle(GPIOD, GPIO12);
 
-		/* Blink the LED (PD12) on the board. */
-			while (1) {
-				gpio_toggle(GPIOD, GPIO12);
+		/* Upon button press, blink more slowly. */
+		if (gpio_get(GPIOA, GPIO0)) {
+			delay(500);
 
-				/* Upon button press, blink more slowly. */
-				if (gpio_get(GPIOA, GPIO0)) {
-					for (i = 0; i < 3000000; i++) {	/* Wait a bit. */
-						__asm__("nop");
-					}
-				}
+		}
 
-				for (i = 0; i < 3000000; i++) {		/* Wait a bit. */
-					__asm__("nop");
-				}
-			}
+		delay(500);
 	}
 
+
 	return 0;
+}
+
+void sys_tick_handler(void)
+{
+	tick++;
+
+}
+
+void exti0_isr(void)
+{
+	exti_reset_request(EXTI0);
+	gpio_toggle(GPIOD, GPIO13);
+}
+
+/* sleep for delay milliseconds */
+static void delay(uint32_t delay_msec)
+{
+	uint32_t wake = tick + delay_msec;
+	while (wake > tick);
 }

@@ -29,7 +29,7 @@ TARGETS=stm32/f4
 # Source files
 
 C_SOURCES =  \
-miniblink.c
+src/main.c
 
 
 include libopencm3.target.mk
