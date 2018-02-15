@@ -24,48 +24,25 @@
 #include <libopencm3/cm3/systick.h>
 #include <libopencm3/stm32/exti.h>
 
-#include <onewire/onewire_hal_usart.h>
+#include <onewire/onewire.h>
 
 
 uint32_t tick = 0;
 
 /* sleep for delay milliseconds */
 static void delay(uint32_t delay_msec);
+static void discovery_led_setup(void);
+static void discovery_button_setup(void);
 
 
-static void gpio_setup(void)
-{
-    /* Enable GPIOD clock. */
-    rcc_periph_clock_enable(RCC_GPIOD);
-
-    /* Set GPIO12 (in GPIO port D) to 'output push-pull'. */
-    gpio_mode_setup(GPIOD, GPIO_MODE_OUTPUT,
-            GPIO_PUPD_NONE, GPIO12 | GPIO13 | GPIO14 | GPIO15);
-}
-
-static void button_setup(void)
-{
-    /* Enable GPIOA clock. */
-    rcc_periph_clock_enable(RCC_GPIOA);
-
-    nvic_enable_irq(NVIC_EXTI0_IRQ);
-    nvic_set_priority(NVIC_EXTI0_IRQ, 1);
-
-    /* Set GPIOA0 to 'input floating'. */
-    gpio_mode_setup(GPIOA, GPIO_MODE_INPUT, GPIO_PUPD_NONE, GPIO0);
-
-    exti_select_source(EXTI0, GPIOA);
-    exti_set_trigger(EXTI0, EXTI_TRIGGER_FALLING);
-    exti_enable_request(EXTI0);
-
-    
+uint32_t button_flag = 0;
 
 
 
-}
 
 int main(void)
 {
+    uint8_t presence = 0;
 
     rcc_clock_setup_hse_3v3(&rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_168MHZ]);
 
@@ -85,16 +62,25 @@ int main(void)
 
     /* Blink the LED (PD12) on the board. */
     while (1) {
-        gpio_toggle(GPIOD, GPIO12);
+        if(button_flag == 1)
+        {
+            button_flag = 0;
 
-        /* Upon button press, blink more slowly. */
-        if (gpio_get(GPIOA, GPIO0)) {
+            /* when button is pressed, turn LED on for a short time (also works as debouncing) */
+            gpio_set(GPIOD, GPIO12);
             delay(500);
+            gpio_clear(GPIOD, GPIO12);
+
+
+            /****************************************************************
+            * ALL TESTS GO HERE, everything below is executed after button press
+            **************************************************************/
+
+            /* onewire reset pulse */
+            presence = onewire_reset();
 
         }
-
-        delay(500);
-    }
+    } 
 
 
     return 0;
@@ -106,15 +92,49 @@ void sys_tick_handler(void)
 
 }
 
-void exti0_isr(void)
-{
-    exti_reset_request(EXTI0);
-    gpio_toggle(GPIOD, GPIO13);
-}
-
 /* sleep for delay milliseconds */
 static void delay(uint32_t delay_msec)
 {
     uint32_t wake = tick + delay_msec;
     while (wake > tick);
 }
+
+static void discovery_led_setup(void)
+{
+    /* Enable GPIOD clock. */
+    rcc_periph_clock_enable(RCC_GPIOD);
+
+    /* Set GPIO12 (in GPIO port D) to 'output push-pull'. */
+    gpio_mode_setup(GPIOD, GPIO_MODE_OUTPUT,
+            GPIO_PUPD_NONE, GPIO12 | GPIO13 | GPIO14 | GPIO15);
+}
+
+static void discovery_button_setup(void)
+{
+    /* Enable GPIOA clock. */
+    rcc_periph_clock_enable(RCC_GPIOA);
+
+    nvic_enable_irq(NVIC_EXTI0_IRQ);
+    nvic_set_priority(NVIC_EXTI0_IRQ, 1);
+
+    /* Set GPIOA0 to 'input floating'. */
+    gpio_mode_setup(GPIOA, GPIO_MODE_INPUT, GPIO_PUPD_NONE, GPIO0);
+
+    exti_select_source(EXTI0, GPIOA);
+    exti_set_trigger(EXTI0, EXTI_TRIGGER_FALLING);
+    exti_enable_request(EXTI0);
+
+}
+
+
+
+
+void exti0_isr(void)
+{
+    exti_reset_request(EXTI0);
+    button_flag = 1;
+}
+
+
+
+

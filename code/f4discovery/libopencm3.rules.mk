@@ -198,14 +198,14 @@ $(BIN_DIR)/%.elf %.map: $(OBJS) $(LDSCRIPT)
 	$(SIZE) --format=berkeley $(BIN_DIR)/$(*).elf
 
 $(BIN_DIR)/%.o: %.c Makefile | $(BIN_DIR) 
-	@#printf "  CC      $(*).c\n"
+#	@#printf "  CC      $(*).c\n"
 	$(Q)$(CC) $(TGT_CFLAGS) $(CFLAGS) $(TGT_CPPFLAGS) $(CPPFLAGS) $(C_INCLUDES) -o $(BIN_DIR)/$(*).o -c $<
 
 $(BIN_DIR):
 	mkdir $@
 
 clean:
-	@#printf "  CLEAN\n"
+	@echo "  CLEAN\n"
 	-rm -fR .dep $(BIN_DIR)
 
 .PHONY: images clean stylecheck styleclean elf bin hex srec list

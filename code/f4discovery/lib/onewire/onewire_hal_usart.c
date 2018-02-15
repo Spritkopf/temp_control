@@ -26,6 +26,7 @@
 #define USART_GPIO_PORT_CLK     RCC_GPIOA
 
 static void onewire_hal_usart_setup(uint32_t baudrate);
+static uint8_t onewire_hal_usart_xfer(uint8_t tx_data_byte);
 static uint8_t onewire_bit_to_byte(uint8_t input_byte, uint8_t offset);
 
 
@@ -83,11 +84,15 @@ void onewire_hal_usart_deinit(void)
  */
 uint8_t onewire_hal_usart_reset_line(void)
 {
+    uint8_t result = 0;
+
     onewire_hal_usart_setup(USART_BAUDRATE_RESET);
 
-    onewire_hal_usart_xfer_byte(0xF0);
+    result = onewire_hal_usart_xfer(0xF0);      /* transmit raw value for "reset pulse" */
 
     onewire_hal_usart_setup(USART_BAUDRATE_COMM);    
+
+    return (result);
 }
 
 
@@ -99,20 +104,17 @@ uint8_t onewire_hal_usart_reset_line(void)
 uint8_t onewire_hal_usart_xfer_byte(uint8_t tx_data_byte)
 {
     uint8_t bit_idx;
-    uint16_t tx_word;
-    uint16_t rx_word;
+    uint8_t tx_byte;
+    uint8_t rx_byte = 0;
+    
     for(bit_idx = 0; bit_idx < 8; bit_idx++)
     {
-        tx_word = (uint16_t)onewire_bit_to_byte(tx_data_byte, bit_idx);
+        tx_byte = onewire_bit_to_byte(tx_data_byte, bit_idx);
 
-        usart_wait_send_ready(USART_INSTANCE);
-        usart_send_blocking(USART_INSTANCE, tx_word);
-
-        usart_wait_recv_ready(USART_INSTANCE);
-        rx_word = usart_recv_blocking(USART_INSTANCE);
+        rx_byte = onewire_hal_usart_xfer(tx_byte);
     }
 
-    return ((uint8_t)(rx_word & 0xFF));
+    return (rx_byte);
 }
 
 
@@ -129,6 +131,27 @@ static void onewire_hal_usart_setup(uint32_t baudrate)
     usart_set_baudrate(USART_INSTANCE, baudrate);
     usart_enable(USART_INSTANCE);
 }
+
+/*!
+ * \brief Send/receive one byte over USART
+ * \param[in] tx_data_byte: data byte to send
+ * \returns the received byte
+ */
+static uint8_t onewire_hal_usart_xfer(uint8_t tx_data_byte)
+{
+    uint16_t rx_word = 0;
+    uint16_t tx_word = (uint16_t)tx_data_byte;
+
+    usart_wait_send_ready(USART_INSTANCE);
+    usart_send_blocking(USART_INSTANCE, tx_word);
+
+    usart_wait_recv_ready(USART_INSTANCE);
+    rx_word = usart_recv_blocking(USART_INSTANCE);
+    
+
+    return ((uint8_t)(rx_word & 0xFF));
+}
+
 
 /*!
  * \brief get the onewire-byte-representation of a single bit
@@ -152,3 +175,6 @@ static uint8_t onewire_bit_to_byte(uint8_t input_byte, uint8_t offset)
         return (0x00);
     }
 }
+
+
+
