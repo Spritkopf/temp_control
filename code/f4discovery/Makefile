@@ -28,8 +28,17 @@ TARGETS=stm32/f4
 ###############################################################################
 # Source files
 
-C_SOURCES =  \
-src/main.c
+C_SOURCES = \
+src/main.c \
+lib/onewire/onewire.c \
+lib/onewire/onewire_hal_usart.c
+
+###############################################################################
+# Include paths
+
+C_INCLUDES = \
+-Ilib
+
 
 
 include libopencm3.target.mk

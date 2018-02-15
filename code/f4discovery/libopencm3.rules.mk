@@ -133,6 +133,7 @@ endif
 
 LDLIBS		+= -Wl,--start-group -lc -lgcc -lnosys -Wl,--end-group
 
+
 ###############################################################################
 ###############################################################################
 ###############################################################################
@@ -144,7 +145,10 @@ LDLIBS		+= -Wl,--start-group -lc -lgcc -lnosys -Wl,--end-group
 all: elf
 
 elf: $(BIN_DIR)/$(BINARY).elf
-bin: $(BIN_DIR)/$(BINARY).bin
+bin: 
+	@#printf "  OBJCOPY $(*).bin\n"
+	$(Q)$(OBJCOPY) -Obinary $(BIN_DIR)/$(BINARY).elf $(BIN_DIR)/$(BINARY).bin
+
 hex: $(BIN_DIR)/$(BINARY).hex
 srec: $(BIN_DIR)/$(BINARY).srec
 list: $(BIN_DIR)/$(BINARY).list
@@ -190,12 +194,12 @@ $(BIN_DIR)/%.list: %.elf
 
 $(BIN_DIR)/%.elf %.map: $(OBJS) $(LDSCRIPT)
 	@#printf "  LD      $(*).elf\n"
-	$(Q)$(LD) $(TGT_LDFLAGS) $(LDFLAGS) $(OBJS) $(LDLIBS) -o $(BIN_DIR)/$(*).elf
+	$(Q)$(LD) $(TGT_LDFLAGS) $(LDFLAGS) $(OBJS) $(LDLIBS) $(C_INCLUDES) -o $(BIN_DIR)/$(*).elf
 	$(SIZE) --format=berkeley $(BIN_DIR)/$(*).elf
 
 $(BIN_DIR)/%.o: %.c Makefile | $(BIN_DIR) 
 	@#printf "  CC      $(*).c\n"
-	$(Q)$(CC) $(TGT_CFLAGS) $(CFLAGS) $(TGT_CPPFLAGS) $(CPPFLAGS) -o $(BIN_DIR)/$(*).o -c $<
+	$(Q)$(CC) $(TGT_CFLAGS) $(CFLAGS) $(TGT_CPPFLAGS) $(CPPFLAGS) $(C_INCLUDES) -o $(BIN_DIR)/$(*).o -c $<
 
 $(BIN_DIR):
 	mkdir $@
