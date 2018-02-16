@@ -37,7 +37,11 @@ uint8_t onewire_reset(void)
  */
 uint8_t onewire_xfer_byte(uint8_t tx_byte)
 {
-    uint8_t rx_byte = onewire_hal_usart_xfer_byte(tx_byte);
+    uint8_t rx_byte = 0;
+
+    onewire_hal_usart_send_byte(tx_byte);
+
+    rx_byte = onewire_hal_usart_receive_byte();
 
     return (rx_byte);
 }

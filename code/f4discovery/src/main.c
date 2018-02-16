@@ -25,6 +25,7 @@
 #include <libopencm3/stm32/exti.h>
 
 #include <onewire/onewire.h>
+#include <onewire/onewire_hal_usart.h>
 
 
 uint32_t tick = 0;
@@ -56,9 +57,10 @@ int main(void)
     /* Start counting. */
     systick_counter_enable();
 
-    gpio_setup();
-    button_setup();
+    discovery_led_setup();
+    discovery_button_setup();
 
+    onewire_init();
 
     /* Blink the LED (PD12) on the board. */
     while (1) {
@@ -125,7 +127,6 @@ static void discovery_button_setup(void)
     exti_enable_request(EXTI0);
 
 }
-
 
 
 

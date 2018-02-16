@@ -28,9 +28,15 @@ void onewire_hal_usart_deinit(void);
 uint8_t onewire_hal_usart_reset_line(void);
 
 /*!
- * \brief Send/receive one byte
+ * \brief Send one byte
  * \param[in] tx_data_byte: data byte to send
  * \returns the received byte
  */
-uint8_t onewire_hal_usart_xfer_byte(uint8_t tx_data_byte);
+uint8_t onewire_hal_usart_send_byte(uint8_t tx_data_byte);
+
+/*!
+ * \brief Receive one byte
+ * \returns the received byte
+ */
+uint8_t onewire_hal_usart_receive_byte(void);
 

@@ -25,10 +25,18 @@
 #define USART_GPIO_PORT         GPIOA
 #define USART_GPIO_PORT_CLK     RCC_GPIOA
 
-static void onewire_hal_usart_setup(uint32_t baudrate);
-static uint8_t onewire_hal_usart_xfer(uint8_t tx_data_byte);
-static uint8_t onewire_bit_to_byte(uint8_t input_byte, uint8_t offset);
+#define ONEWIRE_RESET_PULSE     0xFE            /* 0xFE represents a 1-Wire reset pulse @ 9600 Baudrate */
+#define ONEWIRE_READ_TIMEOUT    10000           /* timeout for blocking uart read */
+#define ONEWIRE_READ_SLOT       0xFF            
 
+static void onewire_hal_usart_setup(uint32_t baudrate);
+static uint8_t onewire_bit_to_byte(uint8_t input_byte, uint8_t offset);
+static uint8_t onewire_hal_usart_send(uint8_t tx_data_byte);
+static uint8_t onewire_hal_usart_read(void);
+
+
+uint16_t receive_buffer = 0;
+uint8_t receive_flag = 0;
 
 /*!
  * \brief Initialize USART peripheral in onewire half-duplex mode
@@ -43,7 +51,7 @@ void onewire_hal_usart_init(void)
     gpio_set_output_options(USART_GPIO_PORT, GPIO_OTYPE_OD, GPIO_OSPEED_25MHZ, USART_GPIO_PIN_TX | USART_GPIO_PIN_RX);
 
     /* select proper alternate function mapping for USARt GPIO pins */
-    gpio_set_af(USART_GPIO_PORT, GPIO_AF7 ,USART_GPIO_PIN_TX | USART_GPIO_PIN_RX);
+    gpio_set_af(USART_GPIO_PORT, GPIO_AF7, USART_GPIO_PIN_TX | USART_GPIO_PIN_RX);
 
     /* configure USART peripheral in Onewire half-duplex mode */
     usart_set_databits(USART_INSTANCE, 8);
@@ -59,13 +67,11 @@ void onewire_hal_usart_init(void)
     USART_CR3(USART_INSTANCE) &= ~USART_CR3_IREN;
     USART_CR3(USART_INSTANCE) |= USART_CR3_HDSEL;
 
-/*  don't use interrupt for now...
-
     usart_enable_rx_interrupt(USART_INSTANCE);
     nvic_enable_irq(USART_IRQ);
-*/
+
     /* set baudrate and enable usart peripheral */
-    onewire_hal_usart_setup(USART_BAUDRATE_COMM);
+    onewire_hal_usart_setup(USART_BAUDRATE_RESET);
 }
 
 /*!
@@ -88,7 +94,9 @@ uint8_t onewire_hal_usart_reset_line(void)
 
     onewire_hal_usart_setup(USART_BAUDRATE_RESET);
 
-    result = onewire_hal_usart_xfer(0xF0);      /* transmit raw value for "reset pulse" */
+    onewire_hal_usart_send(ONEWIRE_RESET_PULSE);      /* transmit raw value for "reset pulse" */
+
+
 
     onewire_hal_usart_setup(USART_BAUDRATE_COMM);    
 
@@ -101,7 +109,7 @@ uint8_t onewire_hal_usart_reset_line(void)
  * \param[in] tx_data_byte: data byte to send
  * \returns the received byte
  */
-uint8_t onewire_hal_usart_xfer_byte(uint8_t tx_data_byte)
+uint8_t onewire_hal_usart_send_byte(uint8_t tx_data_byte)
 {
     uint8_t bit_idx;
     uint8_t tx_byte;
@@ -111,12 +119,33 @@ uint8_t onewire_hal_usart_xfer_byte(uint8_t tx_data_byte)
     {
         tx_byte = onewire_bit_to_byte(tx_data_byte, bit_idx);
 
-        rx_byte = onewire_hal_usart_xfer(tx_byte);
+        onewire_hal_usart_send(tx_byte);
+    }
+
+    /* todo: function for bytes to bits (... or so) */
+    return (rx_byte);
+}
+
+
+/*!
+ * \brief Receive one byte
+ * \returns the received byte
+ */
+uint8_t onewire_hal_usart_receive_byte(void)
+{
+    uint8_t bit_idx;
+    uint8_t rx_byte = 0;
+    uint8_t rx_bits[8];
+
+    onewire_hal_usart_send(ONEWIRE_READ_SLOT);
+
+    for(bit_idx = 0; bit_idx < 8; bit_idx++)
+    {
+        rx_bits[bit_idx] = onewire_hal_usart_read();
     }
 
     return (rx_byte);
 }
-
 
 
 /* --------------static functions---------------------*/
@@ -128,36 +157,44 @@ uint8_t onewire_hal_usart_xfer_byte(uint8_t tx_data_byte)
  */
 static void onewire_hal_usart_setup(uint32_t baudrate)
 {
+    usart_disable(USART_INSTANCE);
     usart_set_baudrate(USART_INSTANCE, baudrate);
     usart_enable(USART_INSTANCE);
 }
 
 /*!
- * \brief Send/receive one byte over USART
+ * \brief Send one byte over USART
  * \param[in] tx_data_byte: data byte to send
  * \returns the received byte
  */
-static uint8_t onewire_hal_usart_xfer(uint8_t tx_data_byte)
+static uint8_t onewire_hal_usart_send(uint8_t tx_data_byte)
 {
-    uint16_t rx_word = 0;
     uint16_t tx_word = (uint16_t)tx_data_byte;
 
-    usart_wait_send_ready(USART_INSTANCE);
     usart_send_blocking(USART_INSTANCE, tx_word);
 
-    usart_wait_recv_ready(USART_INSTANCE);
-    rx_word = usart_recv_blocking(USART_INSTANCE);
-    
+    while (!usart_get_flag(USART_INSTANCE, USART_SR_TC));
 
-    return ((uint8_t)(rx_word & 0xFF));
+    return (0);
 }
 
+/*!
+ * \brief Receive one byte
+ * \returns the received byte
+ */
+static uint8_t onewire_hal_usart_read(void)
+{
+    uint32_t timeout = ONEWIRE_READ_TIMEOUT;
+    while ((receive_flag ==1) && (timeout--));
+
+    return (uint8_t)(receive_buffer & 0xFF);
+}
 
 /*!
  * \brief get the onewire-byte-representation of a single bit
  * \param[in] input_byte: input byte
  * \param[in] offset: number of the bit (0 = LSB)
- * \returns onewire-send-byte representing the bit (1=0xFF; 0=0x00)
+ * \returns onewire-send-byte representing the bit write slot  (1=0xFF; 0=0x00)
  */
 static uint8_t onewire_bit_to_byte(uint8_t input_byte, uint8_t offset)
 {
@@ -177,4 +214,12 @@ static uint8_t onewire_bit_to_byte(uint8_t input_byte, uint8_t offset)
 }
 
 
-
+void usart2_isr()
+{
+    if (((USART_CR1(USART_INSTANCE) & USART_CR1_RXNEIE) != 0) &&
+        ((USART_SR(USART_INSTANCE) & USART_SR_RXNE) != 0)) 
+    {
+        receive_buffer = usart_recv_blocking(USART_INSTANCE);
+        receive_flag = 1;
+    }
+}
