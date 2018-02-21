@@ -1,10 +1,22 @@
-
-
-
- //  LICENSE ////
-
-
-
+/*
+ * Copyright (c) 2018 Ricardo Beck.
+ * 
+ * This file is part of temp_control
+ * (see https://github.com/Spritkopf/temp_control).
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #include <stdint.h>
 #include <libopencm3/stm32/rcc.h>
@@ -28,10 +40,12 @@
 #define ONEWIRE_RESET_PULSE     0xFE            /* 0xFE represents a 1-Wire reset pulse @ 9600 Baudrate */
 #define ONEWIRE_READ_TIMEOUT    10000           /* timeout for blocking uart read */
 #define ONEWIRE_READ_SLOT       0xFF            
+#define ONEWIRE_WRITE_SLOT_1    0xFF            
+#define ONEWIRE_WRITE_SLOT_0    0x00
 
 static void onewire_hal_usart_setup(uint32_t baudrate);
-static uint8_t onewire_bit_to_byte(uint8_t input_byte, uint8_t offset);
-static uint8_t onewire_hal_usart_send(uint8_t tx_data_byte);
+static uint8_t onewire_hal_usart_byte_to_bit(uint8_t input_byte);
+static void onewire_hal_usart_send(uint8_t tx_data_byte);
 static uint8_t onewire_hal_usart_read(void);
 
 
@@ -91,69 +105,80 @@ void onewire_hal_usart_deinit(void)
 uint8_t onewire_hal_usart_reset_line(void)
 {
     uint8_t result = 0;
+    uint8_t rx_usart_byte = 0;
 
+    /* re-configure USART baudrate to match 1-Wire Reset-Pulse requirements */
     onewire_hal_usart_setup(USART_BAUDRATE_RESET);
 
-    onewire_hal_usart_send(ONEWIRE_RESET_PULSE);      /* transmit raw value for "reset pulse" */
+    /* transmit raw value for "reset pulse" */
+    onewire_hal_usart_send(ONEWIRE_RESET_PULSE);      
 
-
+    /* read raw usart value which represents one bit */
+    rx_usart_byte = onewire_hal_usart_read();
 
     onewire_hal_usart_setup(USART_BAUDRATE_COMM);    
 
+    if(rx_usart_byte == ONEWIRE_RESET_PULSE)
+    {
+        /* no device present */
+        result = 0;
+    }
+    else
+    {
+        result = 1;   
+    }
     return (result);
 }
 
 
 /*!
- * \brief Send/receive one byte
- * \param[in] tx_data_byte: data byte to send
- * \returns the received byte
+ * \brief Send one bit
+ * \param[in] tx_onewire_bit: data to send (1 | 0)
  */
-uint8_t onewire_hal_usart_send_byte(uint8_t tx_data_byte)
+void onewire_hal_usart_send_slot(uint8_t tx_onewire_bit)
 {
-    uint8_t bit_idx;
     uint8_t tx_byte;
-    uint8_t rx_byte = 0;
     
-    for(bit_idx = 0; bit_idx < 8; bit_idx++)
+    if(tx_onewire_bit == 1)
     {
-        tx_byte = onewire_bit_to_byte(tx_data_byte, bit_idx);
-
-        onewire_hal_usart_send(tx_byte);
+        tx_byte = ONEWIRE_WRITE_SLOT_1;
     }
-
-    /* todo: function for bytes to bits (... or so) */
-    return (rx_byte);
+    else
+    if(tx_onewire_bit == 0)
+    {
+        tx_byte = ONEWIRE_WRITE_SLOT_0;
+    }
+    
+    onewire_hal_usart_send(tx_byte);
 }
 
-
 /*!
- * \brief Receive one byte
- * \returns the received byte
+ * \brief Receive one bit
+ * \returns the received bit
  */
-uint8_t onewire_hal_usart_receive_byte(void)
+uint8_t onewire_hal_usart_read_slot(void)
 {
-    uint8_t bit_idx;
-    uint8_t rx_byte = 0;
-    uint8_t rx_bits[8];
+    uint8_t rx_usart_byte;
+    uint8_t rx_bit;
 
     onewire_hal_usart_send(ONEWIRE_READ_SLOT);
 
-    for(bit_idx = 0; bit_idx < 8; bit_idx++)
-    {
-        rx_bits[bit_idx] = onewire_hal_usart_read();
-    }
+    /* read raw usart value which represents one bit */
+    rx_usart_byte = onewire_hal_usart_read();
 
-    return (rx_byte);
+    /* convert USART value to onewire bit */
+    rx_bit = onewire_hal_usart_byte_to_bit(rx_usart_byte);
+
+    return (rx_bit);
 }
 
-
-/* --------------static functions---------------------*/
+/******************************************************************
+* BEGIN OF STATIC FUNCTIONS
+******************************************************************/
 
 /*!
  * \brief setup the usart peripheral
-
- \details this is an extra function because the baudrate needs to be changed during reste commands
+ * \details this is an extra function because the baudrate needs to be changed during reste commands
  */
 static void onewire_hal_usart_setup(uint32_t baudrate)
 {
@@ -167,45 +192,47 @@ static void onewire_hal_usart_setup(uint32_t baudrate)
  * \param[in] tx_data_byte: data byte to send
  * \returns the received byte
  */
-static uint8_t onewire_hal_usart_send(uint8_t tx_data_byte)
+static void onewire_hal_usart_send(uint8_t tx_data_byte)
 {
     uint16_t tx_word = (uint16_t)tx_data_byte;
 
     usart_send_blocking(USART_INSTANCE, tx_word);
 
     while (!usart_get_flag(USART_INSTANCE, USART_SR_TC));
-
-    return (0);
 }
 
 /*!
- * \brief Receive one byte
- * \returns the received byte
+ * \brief Fetch a received byte from the receive buffer
+ * \returns the received byte or 0 on timeout
  */
 static uint8_t onewire_hal_usart_read(void)
 {
     uint32_t timeout = ONEWIRE_READ_TIMEOUT;
-    while ((receive_flag ==1) && (timeout--));
+    while ((receive_flag == 0) && (timeout--));
 
+    receive_flag = 0;
+
+    if(timeout == 0)
+    {
+        /* timeout -> return 0x00 */
+        return (0x00);
+    }
     return (uint8_t)(receive_buffer & 0xFF);
 }
 
-/*!
- * \brief get the onewire-byte-representation of a single bit
- * \param[in] input_byte: input byte
- * \param[in] offset: number of the bit (0 = LSB)
- * \returns onewire-send-byte representing the bit write slot  (1=0xFF; 0=0x00)
- */
-static uint8_t onewire_bit_to_byte(uint8_t input_byte, uint8_t offset)
-{
-    if(offset > 7)
-    {
-        offset = 7;
-    }
 
-    if(((input_byte>>offset) & 0x01) == 0x01)
+
+/*!
+ * \brief get the onewire-bit value for a received USART byte
+ * \param[in] input_byte: input byte received over USART
+ * \retval 1: if received a one-wire '1' (0xFF)
+ * \retval 0: if received a one-wire '0' (0xFE or less)
+ */
+static uint8_t onewire_hal_usart_byte_to_bit(uint8_t input_byte)
+{
+    if(input_byte == 0xFF)
     {
-        return (0xFF);
+        return (0x01);
     }
     else
     {
@@ -214,6 +241,15 @@ static uint8_t onewire_bit_to_byte(uint8_t input_byte, uint8_t offset)
 }
 
 
+/******************************************************************
+* END OF STATIC FUNCTIONS
+******************************************************************/
+
+/*
+ * \brief Usart interrupt service routine
+ * \details Receives the byte from USARt RX buffer and saves it in the receive buffer.
+ *          The receive flag notifies the application, that a byte was received
+ */
 void usart2_isr()
 {
     if (((USART_CR1(USART_INSTANCE) & USART_CR1_RXNEIE) != 0) &&
