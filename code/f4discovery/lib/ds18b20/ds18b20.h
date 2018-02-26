@@ -24,22 +24,25 @@
 #include <stdint.h>
 
 
+/*!
+ * \brief Type for setting resolution in config register 
+ */
 typedef enum
 {
     DS18B20_RES_9B   = 0x00,
-    DS18B20_RES_10B  = 0x01,
-    DS18B20_RES_11B  = 0x02,
-    DS18B20_RES_12B  = 0x03,
+    DS18B20_RES_10B  = 0x20,
+    DS18B20_RES_11B  = 0x40,
+    DS18B20_RES_12B  = 0x60,
 } ds18b20_resolution_t;
 
-/* 
+/*! 
  * \brief InitializeDS18B20 temperature sensor
  * \retval 0  - OK
  * \retval -1 - No device found on bus
  */
 int8_t ds18b20_init(void);
 
-/* 
+/*! 
  * \brief Set resolution of the temperature sensor
  * \param[in] resolution: 2-bit value of configuration register setting the resolution, must be of type \ref ds18b20_resolution_t
  * \retval 0  - OK
@@ -54,24 +57,24 @@ int8_t ds18b20_init(void);
  */
 int8_t ds18b20_set_resolution(ds18b20_resolution_t resolution);
 
-/* 
+/*! 
  * \brief Save configuration in EEPROM
  */
 void ds18b20_save_config(void);
 
 
-/* 
+/*! 
  * \brief Reload configuration from EEPROM
  */
 void ds18b20_load_config(void);
 
-/* 
+/*!
  * \brief Start temperature conversion
  */
 void ds18b20_start_conversion(void);
 
 
-/* 
+/*! 
  * \brief Read the temperature register
  * \param[out] temperature: buffer for temperature value
  * \returns temperature

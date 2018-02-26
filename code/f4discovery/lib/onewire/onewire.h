@@ -21,7 +21,6 @@
 #ifndef ONWIRE_H_
 #define ONWIRE_H_
 
- //  LICENSE ////
 
 #include <stdint.h>
 
@@ -33,7 +32,7 @@ void onewire_init(void);
 
 /*!
  * \brief Send 1-Wire reset pulse
- * \returns: presence - 1 if device(s) present on the bus, otherwise 0
+ * \returns presence: 1 if device(s) present on the bus, otherwise 0
  */
 uint8_t onewire_reset(void);
 
