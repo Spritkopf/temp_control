@@ -27,8 +27,8 @@
 #define DS18B20_CMD_ROM_SKIP            0xCC    /* access all devices present on the bus simultaneously */
 #define DS18B20_CMD_ALARM_SEARCH        0xEC    /* look for devces which are in alarm state */
 #define DS18B20_CMD_CONVERT             0x44    /* start a temperature conversion */
-#define DS18B20_CMD_SCRATCHPAD_WRITE    0x4E    /* read scratchpad RAM */
-#define DS18B20_CMD_SCRATCHPAD_READ     0xBE    /* write scratchpad RAM */
+#define DS18B20_CMD_SCRATCHPAD_WRITE    0x4E    /* write scratchpad RAM */
+#define DS18B20_CMD_SCRATCHPAD_READ     0xBE    /* read scratchpad RAM */
 #define DS18B20_CMD_SCRATCHPAD_COPY     0x48    /* copy data from scratchpad RAM to EEPROM */
 #define DS18B20_CMD_EEPROM_RECALL       0xB8    /* reload data from EEPROM to scratchpad RAM */
 #define DS18B20_CMD_READ_POWER_SUPPLY   0xB4    /* determine if device is in parasitic power mode */
@@ -89,10 +89,10 @@ int8_t ds18b20_init(void)
  */
 int8_t ds18b20_set_resolution(ds18b20_resolution_t resolution)
 {
-    uint8_t scratchpad_buffer[9];
+    uint8_t scratchpad_buffer[9] = {0};
 
     /* write config register  to scratchpad */
-    ds18b20_scratchpad_write(0, 0, resolution);
+    ds18b20_scratchpad_write(0xAA, 0x87, resolution);
 
     /* read back scratchpad to ensure data integrity */
     ds18b20_scratchpad_read(scratchpad_buffer, 9);    
@@ -192,7 +192,7 @@ static void ds18b20_scratchpad_write(uint8_t alert_h, uint8_t alert_l, uint8_t c
     onewire_send_byte(alert_l);
     onewire_send_byte(config);
 
-    onewire_reset();
+    //onewire_reset();
 }
 
 /*!
@@ -218,6 +218,6 @@ static void ds18b20_scratchpad_read(uint8_t* buffer, uint8_t len)
             buffer[i] = onewire_receive_byte();
         }
 
-        onewire_reset();
+        //onewire_reset();
     }  
 }

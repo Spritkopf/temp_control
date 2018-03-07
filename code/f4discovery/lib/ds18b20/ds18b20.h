@@ -29,10 +29,10 @@
  */
 typedef enum
 {
-    DS18B20_RES_9B   = 0x00,
-    DS18B20_RES_10B  = 0x20,
-    DS18B20_RES_11B  = 0x40,
-    DS18B20_RES_12B  = 0x60,
+    DS18B20_RES_9B   = 0x10,
+    DS18B20_RES_10B  = 0x3F,
+    DS18B20_RES_11B  = 0x5F,
+    DS18B20_RES_12B  = 0x7F,
 } ds18b20_resolution_t;
 
 /*! 
@@ -61,7 +61,6 @@ int8_t ds18b20_set_resolution(ds18b20_resolution_t resolution);
  * \brief Save configuration in EEPROM
  */
 void ds18b20_save_config(void);
-
 
 /*! 
  * \brief Reload configuration from EEPROM

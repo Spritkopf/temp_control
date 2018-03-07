@@ -37,7 +37,7 @@
 #define USART_GPIO_PORT         GPIOA
 #define USART_GPIO_PORT_CLK     RCC_GPIOA
 
-#define ONEWIRE_RESET_PULSE     0xFE            /* 0xFE represents a 1-Wire reset pulse @ 9600 Baudrate */
+#define ONEWIRE_RESET_PULSE     0xF0            /* 0xF0 represents a 1-Wire reset pulse @ 9600 Baudrate */
 #define ONEWIRE_READ_TIMEOUT    10000           /* timeout for blocking uart read */
 #define ONEWIRE_READ_SLOT       0xFF            
 #define ONEWIRE_WRITE_SLOT_1    0xFF            
@@ -47,6 +47,7 @@ static void onewire_hal_usart_setup(uint32_t baudrate);
 static uint8_t onewire_hal_usart_byte_to_bit(uint8_t input_byte);
 static void onewire_hal_usart_send(uint8_t tx_data_byte);
 static uint8_t onewire_hal_usart_read(void);
+static uint8_t onewire_hal_usart_read2(void);
 
 
 uint16_t receive_buffer = 0;
@@ -196,6 +197,8 @@ static void onewire_hal_usart_send(uint8_t tx_data_byte)
 {
     uint16_t tx_word = (uint16_t)tx_data_byte;
 
+    receive_flag = 0;
+
     usart_send_blocking(USART_INSTANCE, tx_word);
 
     while (!usart_get_flag(USART_INSTANCE, USART_SR_TC));
@@ -208,9 +211,8 @@ static void onewire_hal_usart_send(uint8_t tx_data_byte)
 static uint8_t onewire_hal_usart_read(void)
 {
     uint32_t timeout = ONEWIRE_READ_TIMEOUT;
-    while ((receive_flag == 0) && (timeout--));
 
-    receive_flag = 0;
+    while ((receive_flag == 0) && (timeout--));
 
     if(timeout == 0)
     {
@@ -218,6 +220,11 @@ static uint8_t onewire_hal_usart_read(void)
         return (0x00);
     }
     return (uint8_t)(receive_buffer & 0xFF);
+}
+
+static uint8_t onewire_hal_usart_read2(void)
+{
+	return(usart_recv_blocking(USART_INSTANCE));
 }
 
 

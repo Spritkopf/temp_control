@@ -24,8 +24,7 @@
 #include <libopencm3/cm3/systick.h>
 #include <libopencm3/stm32/exti.h>
 
-#include <onewire/onewire.h>
-#include <onewire/onewire_hal_usart.h>
+#include <ds18b20/ds18b20.h>
 
 
 uint32_t tick = 0;
@@ -44,6 +43,7 @@ uint32_t button_flag = 0;
 int main(void)
 {
     uint8_t presence = 0;
+    float temp = 1.0;
 
     rcc_clock_setup_hse_3v3(&rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_168MHZ]);
 
@@ -60,7 +60,9 @@ int main(void)
     discovery_led_setup();
     discovery_button_setup();
 
-    onewire_init();
+    presence = ds18b20_init();
+
+    ds18b20_set_resolution(DS18B20_RES_10B);
 
     /* Blink the LED (PD12) on the board. */
     while (1) {
@@ -79,7 +81,11 @@ int main(void)
             **************************************************************/
 
             /* onewire reset pulse */
-            presence = onewire_reset();
+            ds18b20_start_conversion();
+
+            delay(1000);
+
+            temp = ds18b20_get_temperature();
 
         }
     } 
