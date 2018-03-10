@@ -49,43 +49,40 @@ int main(void)
 
     systick_set_clocksource(STK_CSR_CLKSOURCE_AHB_DIV8);
 
+    /* set systick for 1ms ticks */
     systick_set_reload(21000);
     systick_clear();
-
     systick_interrupt_enable();
-
-    /* Start counting. */
     systick_counter_enable();
 
+    /* initi f4 discovery button / leds */
     discovery_led_setup();
     discovery_button_setup();
 
+    /* init DS18B20 temoerature sensor */
     presence = ds18b20_init();
 
     ds18b20_set_resolution(DS18B20_RES_10B);
 
-    /* Blink the LED (PD12) on the board. */
     while (1) {
         if(button_flag == 1)
         {
             button_flag = 0;
 
-            /* when button is pressed, turn LED on for a short time (also works as debouncing) */
+            /* when button is pressed, turn LED on for a short time (also serves as debouncing) */
             gpio_set(GPIOD, GPIO12);
             delay(500);
             gpio_clear(GPIOD, GPIO12);
 
 
-            /****************************************************************
-            * ALL TESTS GO HERE, everything below is executed after button press
-            **************************************************************/
-
-            /* onewire reset pulse */
+            /* start a measurement */
             ds18b20_start_conversion();
 
             delay(1000);
 
             temp = ds18b20_get_temperature();
+
+            /* place breakpoint here, inspect variable 'temp' */
 
         }
     } 
