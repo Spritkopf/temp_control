@@ -47,7 +47,6 @@ static void onewire_hal_usart_setup(uint32_t baudrate);
 static uint8_t onewire_hal_usart_byte_to_bit(uint8_t input_byte);
 static void onewire_hal_usart_send(uint8_t tx_data_byte);
 static uint8_t onewire_hal_usart_read(void);
-static uint8_t onewire_hal_usart_read2(void);
 
 
 uint16_t receive_buffer = 0;
@@ -221,12 +220,6 @@ static uint8_t onewire_hal_usart_read(void)
     }
     return (uint8_t)(receive_buffer & 0xFF);
 }
-
-static uint8_t onewire_hal_usart_read2(void)
-{
-	return(usart_recv_blocking(USART_INSTANCE));
-}
-
 
 
 /*!

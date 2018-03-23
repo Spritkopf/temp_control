@@ -33,7 +33,10 @@ C_SOURCES = \
 src/main.c \
 lib/onewire/onewire.c \
 lib/onewire/onewire_hal_usart.c \
-lib/ds18b20/ds18b20.c
+lib/ds18b20/ds18b20.c \
+lib/ssd1306/ssd1306_hal_i2c.c \
+lib/ssd1306/ssd1306.c \
+lib/ssd1306/fonts.c
 
 ###############################################################################
 # Include paths
@@ -41,6 +44,8 @@ lib/ds18b20/ds18b20.c
 C_INCLUDES = \
 -Ilib
 
+###############################################################################
+# Static libraries
 
 include libopencm3.target.mk
 

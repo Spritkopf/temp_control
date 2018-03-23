@@ -26,6 +26,7 @@
 
 #include <ds18b20/ds18b20.h>
 
+#include <ssd1306/ssd1306.h>
 
 uint32_t tick = 0;
 
@@ -36,7 +37,6 @@ static void discovery_button_setup(void);
 
 
 uint32_t button_flag = 0;
-
 
 
 
@@ -60,9 +60,13 @@ int main(void)
     discovery_button_setup();
 
     /* init DS18B20 temoerature sensor */
-    presence = ds18b20_init();
+    //presence = ds18b20_init();
 
-    ds18b20_set_resolution(DS18B20_RES_10B);
+    //ds18b20_set_resolution(DS18B20_RES_10B);
+
+    delay(100);
+    ssd1306_init();
+
 
     while (1) {
         if(button_flag == 1)
@@ -76,11 +80,15 @@ int main(void)
 
 
             /* start a measurement */
-            ds18b20_start_conversion();
+            //ds18b20_start_conversion();
 
             delay(1000);
+            // Clear screen
+            	ssd1306_Fill(SSD1306_COLOR_WHITE);
 
-            temp = ds18b20_get_temperature();
+            	// Flush buffer to screen
+            	ssd1306_UpdateScreen();
+            //temp = ds18b20_get_temperature();
 
             /* place breakpoint here, inspect variable 'temp' */
 
@@ -132,13 +140,9 @@ static void discovery_button_setup(void)
 }
 
 
-
 void exti0_isr(void)
 {
     exti_reset_request(EXTI0);
     button_flag = 1;
 }
-
-
-
 

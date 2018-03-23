@@ -6,6 +6,9 @@ Temperature control based on STM32L1 microcontroller and DS18B20 temperature sen
 #### code
 STM32 Firmware projects based on libopencm3. There is one for the STM32F4-Discovery Board for prototyping and testing code and one for the finished custom PCB with a STM32L1.
 
+- Firmware library: libopencm3. 
+- Display driver: u8g2  (0.96" 128x64 OLED display, SSD1306, I2C)
+
 #### cad
 3D models of the housing as source (FreeCad) as well as the STLs for direct 3D printing
 
