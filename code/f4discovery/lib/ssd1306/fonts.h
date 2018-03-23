@@ -26,15 +26,15 @@
  * \brief struct for font definition
  */
 typedef struct {
-	const uint8_t FontWidth;    /*!< Font width in pixels */
-	uint8_t FontHeight;   /*!< Font height in pixels */
-	const uint16_t *data; /*!< Pointer to data font data array */
-} FontDef;
+	uint8_t width;    /*!< Font width in pixels */
+	uint8_t height;   		/*!< Font height in pixels */
+	const uint16_t *data; 		/*!< Pointer to data font data array */
+} ssd1306_font_t;
 
 
-extern FontDef Font_7x10;
-extern FontDef Font_11x18;
-extern FontDef Font_16x26;
+extern ssd1306_font_t font_7x10;
+extern ssd1306_font_t font_11x18;
+extern ssd1306_font_t font_16x26;
 
 
 #endif /* LIB_SSD1306_FONTS_H_ */
