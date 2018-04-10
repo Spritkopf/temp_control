@@ -44,18 +44,20 @@
 static void ds18b20_send_command(uint8_t cmd);
 static void ds18b20_scratchpad_write(uint8_t alert_l, uint8_t alert_h, uint8_t config);
 static void ds18b20_scratchpad_read(uint8_t* buffer, uint8_t len);
+static int8_t ds18b20_rom_search(void);
 
-
+/* this list holds the ROM codes for each found device. 128 sensors are supported by default */
+uint64_t ds18b20_device_list[128];
+uint8_t ds18b20_device_count = 0;
 
 /* =================================================================== */
 
 
 /*! 
  * \brief InitializeDS18B20 temperature sensor
- * \retval 0  - OK
- * \retval -1 - No device found on bus
+ * \returns the number of found sensors, or 0 if none are present
  */
-int8_t ds18b20_init(void)
+uint8_t ds18b20_init(void)
 {
     uint8_t presence = 0;
 
@@ -65,11 +67,14 @@ int8_t ds18b20_init(void)
 
     if(presence == 1)
     {
-        return (0);
+        
+        /* perform ROM search */
+        return (ds18b20_rom_search);
+
     }
     else
     {
-        return(-1);
+        return(0);
     }
 }
 
@@ -221,3 +226,98 @@ static void ds18b20_scratchpad_read(uint8_t* buffer, uint8_t len)
         //onewire_reset();
     }  
 }
+
+/*!
+ * \brief Perform a 1-Wire ROM search
+ * \retval 0  - OK
+ * \retval -1 - Error, no device present
+ * \details Saves the ROM codes of found devices in device list. 
+ *          The search algorithm is derived from Maxim AppNote 187 https://www.maximintegrated.com/en/app-notes/index.mvp/id/187
+ */
+static int8_t ds18b20_rom_search(void)
+{
+    int8_t last_discrepancy = -1;
+    int8_t last_zero = -1;
+    uint64_t rom_buffer = 0;
+    uint8_t search_direction = 0;
+    uint8_t last_device_flag = 0;
+    uint8_t current_bit_pos = 0;
+    uint8_t current_bit;
+    uint8_t current_bit_comp;
+    /* begin search algorithm */
+
+    /* reset all slaves and send ROM_SEARCH command*/
+    ds18b20_send_command(DS18B20_CMD_ROM_SEARCH);
+
+    while(last_device_flag == 0)
+    {
+        current_bit_pos = 0;
+        last_zero = -1;
+
+        while(current_bit_pos < 64)
+        {
+            /* read bit and complement from bus */
+            current_bit = onewire_read_bit();
+            current_bit_comp = onewire_read_bit();
+
+            if((current_bit == 1) && (current_bit_comp == 1))
+            {
+                /* error, no activity on bus */
+                return (-1);
+            }
+            else
+            if((current_bit == 0) && (current_bit_comp == 1))
+            {
+                /* the received bit was 0 */
+                search_direction = 0;
+            }
+            else
+            if((current_bit == 1) && (current_bit_comp == 0))
+            {
+                /* the received bit was 1 */
+                search_direction = 1;
+            }
+            else
+            if((current_bit == 0) && (current_bit_comp == 0))
+            {
+                /* both 0 and 1 was received */
+                if (current_bit_pos == last_discrepancy)
+                {
+                    search_direction = 1;
+                }
+                else
+                if (current_bit_pos > last_discrepancy)
+                {
+                    search_direction = 0;
+                    last_discrepancy = current_bit_pos;
+                }
+                else
+                {   
+                    search_direction = ((rom_buffer & (0x01 << current_bit_pos)) >> current_bit_pos);
+                }
+                
+                if (search_direction == 0)
+                {
+                    last_zero = current_bit_pos;
+                }
+            }
+
+            rom_buffer &= ~(0x01 << current_bit_pos);
+            rom_buffer |= (search_direction << current_bit_pos);
+            onewire_write_bit(search_direction);
+            current_bit++;
+        }
+        /* device found, store ROM-code in list */
+        ds18b20_device_list[ds18b20_device_count] = rom_buffer;
+        ds18b20_device_count++;
+        last_discrepancy = last_zero;
+
+        if(last_discrepancy == -1)
+        {
+            /* no more unknown devices on the bus, search complete */
+            last_device_flag = 1;
+        }
+    }
+
+    return (ds18b20_device_count);
+}   

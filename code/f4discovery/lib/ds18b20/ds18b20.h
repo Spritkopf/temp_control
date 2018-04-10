@@ -35,12 +35,12 @@ typedef enum
     DS18B20_RES_12B  = 0x7F,
 } ds18b20_resolution_t;
 
+
 /*! 
  * \brief InitializeDS18B20 temperature sensor
- * \retval 0  - OK
- * \retval -1 - No device found on bus
+ * \returns the number of found sensors, or 0 if none are present
  */
-int8_t ds18b20_init(void);
+uint8_t ds18b20_init(void);
 
 /*! 
  * \brief Set resolution of the temperature sensor

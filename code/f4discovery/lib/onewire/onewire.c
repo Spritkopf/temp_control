@@ -21,8 +21,6 @@
 #include <onewire/onewire.h>
 #include <onewire/onewire_hal_usart.h>
 
-void onewire_write_bit(uint8_t tx_bit);
-uint8_t onewire_read_bit(void);
 
 
 /*!
@@ -83,12 +81,14 @@ uint8_t onewire_receive_byte(void)
 }
 
 
-
-
-
-/******************************************************************
-* BEGIN OF STATIC FUNCTIONS
-******************************************************************/
+/*!
+ * \brief Issue a 1-Wire Read slot on the bus and return the answer bit
+ * \returns answer bit (1 or 0)
+ */
+uint8_t onewire_read_bit(void)
+{
+    return (onewire_hal_usart_read_slot());
+}
 
 /*!
  * \brief Issue a 1-Wire Write slot (1 | 0) on the bus
@@ -99,11 +99,3 @@ void onewire_write_bit(uint8_t tx_bit)
     onewire_hal_usart_send_slot(tx_bit);
 }
 
-/*!
- * \brief Issue a 1-Wire Read slot on the bus and return the answer bit
- * \returns answer bit (1 or 0)
- */
-uint8_t onewire_read_bit(void)
-{
-    return (onewire_hal_usart_read_slot());
-}

@@ -49,6 +49,15 @@ void onewire_send_byte(uint8_t tx_byte);
  */
 uint8_t onewire_receive_byte(void);
 
+/*!
+ * \brief Issue a 1-Wire Read slot on the bus and return the answer bit
+ * \returns answer bit (1 or 0)
+ */
+uint8_t onewire_read_bit(void);
 
-
+/*!
+ * \brief Issue a 1-Wire Write slot (1 | 0) on the bus
+ * \param[in] tx_bit: The bit to send (1 or 0)
+ */
+void onewire_write_bit(uint8_t tx_bit);
 #endif
