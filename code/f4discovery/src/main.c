@@ -39,6 +39,7 @@ static void discovery_button_setup(void);
 
 uint32_t button_flag = 0;
 
+uint32_t sensor_count = 0;
 
 
 int main(void)
@@ -61,14 +62,20 @@ int main(void)
     discovery_led_setup();
     discovery_button_setup();
 
-    /* init DS18B20 temoerature sensor */
-    presence = ds18b20_init();
+    delay(100);
+    ssd1306_init();
 
-    ds18b20_set_resolution(DS18B20_RES_10B);
+    /* init DS18B20 temoerature sensor */
+    sensor_count = ds18b20_init();
+
+    ds18b20_set_resolution(0, DS18B20_RES_10B);
 
     delay(100);
     ssd1306_init();
 
+    ssd1306_set_cursor(0,30);
+    sprintf(buf, "Sensors: %i", sensor_count);
+    ssd1306_put_str((char*)buf, font_7x10);
 
     while (1) {
         if(button_flag == 1)
@@ -82,10 +89,10 @@ int main(void)
 
 
             /* start a measurement */
-            ds18b20_start_conversion();
+            ds18b20_start_conversion(0);
 
             delay(1000);
-            temp = ds18b20_get_temperature();
+            temp = ds18b20_get_temperature(0);
 
             sprintf(buf, "%i.%i C", (int)temp, (int)((temp-(int)temp)*1000));
 
