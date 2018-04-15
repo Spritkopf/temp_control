@@ -26,6 +26,7 @@ DEFS		+= -DSTM32F4
 
 FP_FLAGS	?= -mfloat-abi=hard -mfpu=fpv4-sp-d16
 ARCH_FLAGS	= -mthumb -mcpu=cortex-m4 -mlittle-endian $(FP_FLAGS)
+TGT_LDFLAGS += -u _printf_float
 endif
 
 ################################################################################

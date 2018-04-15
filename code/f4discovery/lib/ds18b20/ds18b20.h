@@ -56,7 +56,7 @@ typedef struct _s_scratchpad
  */
 typedef struct _s_ds18b20
 {
-    uint64_t rom;
+    uint8_t rom[8];				/* rom code */
     ds18b20_scratchpad_t scratchpad;
 } ds18b20_t;
 
@@ -73,8 +73,7 @@ uint8_t ds18b20_init(void);
  * \param[in] dev_num: Number of device on bus (counting starts at 0, use DEV_NUM_BROADCAST for broadcast to all devices)
  * \param[in] resolution: 2-bit value of configuration register setting the resolution, must be of type \ref ds18b20_resolution_t
  * \retval 0  - OK
- * \retval -1 - Data corrupted
- * \retval -2 - illegal device number
+ * \retval -1 - illegal device number
  * \details Resolution of the temperature sensor is determined by bits 5 and 6 of configuration register:
  *          0x00 (0000 0000) -> 9 bits   - 93.75 ms  (0.5 degree precision)
  *          0x20 (0010 0000) -> 10 bits  - 187.5 ms  (0.25 degree precision)

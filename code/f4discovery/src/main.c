@@ -44,9 +44,9 @@ uint32_t sensor_count = 0;
 
 int main(void)
 {
-    int8_t presence = 0;
     float temp = 1.0;
     char buf[30];
+    uint8_t i;
 
     rcc_clock_setup_hse_3v3(&rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_168MHZ]);
 
@@ -68,19 +68,15 @@ int main(void)
     /* init DS18B20 temoerature sensor */
     sensor_count = ds18b20_init();
 
-    ds18b20_set_resolution(0, DS18B20_RES_10B);
-
-    delay(100);
-    ssd1306_init();
+    ds18b20_set_resolution(DEV_NUM_BROADCAST, DS18B20_RES_10B);
 
     ssd1306_set_cursor(0,30);
     sprintf(buf, "Sensors: %i", sensor_count);
     ssd1306_put_str((char*)buf, font_7x10);
-
+    ssd1306_update();
     while (1) {
         if(button_flag == 1)
         {
-            //button_flag = 0;
 
             /* when button is pressed, turn LED on for a short time (also serves as debouncing) */
             gpio_set(GPIOD, GPIO12);
@@ -88,18 +84,23 @@ int main(void)
             gpio_clear(GPIOD, GPIO12);
 
 
-            /* start a measurement */
-            ds18b20_start_conversion(0);
+            /* start a measurement on all devices */
+            ds18b20_start_conversion(DEV_NUM_BROADCAST);
 
             delay(1000);
-            temp = ds18b20_get_temperature(0);
 
-            sprintf(buf, "%i.%i C", (int)temp, (int)((temp-(int)temp)*1000));
+            for(i = 0; i < sensor_count; i++)
+            {
+				ds18b20_get_temperature(i, &temp);
 
-            ssd1306_set_cursor(0,0);
-            ssd1306_put_str((char*)buf, font_7x10);
+//				sprintf(buf, "%i.%i C", (int)temp, (int)((temp-(int)temp)*1000));
+				sprintf(buf, "%i: %4.2f C", i, temp);
+
+				ssd1306_set_cursor(0,i*12);
+				ssd1306_put_str((char*)buf, font_7x10);
+            }
+
             ssd1306_update();
-
 
             /* place breakpoint here, inspect variable 'temp' */
 

@@ -47,9 +47,9 @@
 
 
 /* static declarations */
-static int8_t ds18b20_send_command(ds18b20_t* device, uint8_t cmd);
-static int8_t ds18b20_scratchpad_write(ds18b20_t* device, uint8_t alert_l, uint8_t alert_h, uint8_t config);
-static int8_t ds18b20_scratchpad_read(ds18b20_t* device, uint8_t* buffer, uint8_t len);
+static int8_t ds18b20_send_command(uint8_t dev_num, uint8_t cmd);
+static int8_t ds18b20_scratchpad_write(uint8_t dev_num, uint8_t alert_l, uint8_t alert_h, uint8_t config);
+static int8_t ds18b20_scratchpad_read(uint8_t dev_num, uint8_t* buffer, uint8_t len);
 static uint8_t ds18b20_rom_search(void);
 
 /* this list holds the objects for each found device. 64 sensors are supported by default */
@@ -87,8 +87,7 @@ uint8_t ds18b20_init(void)
  * \param[in] dev_num: Number of device on bus (counting starts at 0, use DS18B20_BROADCAST for broadcast to all devices)
  * \param[in] resolution: 2-bit value of configuration register setting the resolution, must be of type \ref ds18b20_resolution_t
  * \retval 0  - OK
- * \retval -1 - Data corrupted
- * \retval -2 - illegal device number
+ * \retval -1 - illegal device number
  * \details Resolution of the temperature sensor is determined by bits 5 and 6 of configuration register:
  *          0x00 (0000 0000) -> 9 bits   - 93.75 ms  (0.5 degree precision)
  *          0x20 (0010 0000) -> 10 bits  - 187.5 ms  (0.25 degree precision)
@@ -100,25 +99,19 @@ uint8_t ds18b20_init(void)
 int8_t ds18b20_set_resolution(uint8_t dev_num, ds18b20_resolution_t resolution)
 {
     uint8_t scratchpad_buffer[9] = {0};
-    ds18b20_t* device;
-
-    if(dev_num >= ds18b20_device_count)
-    {
-        return (-2);
-    }
-
-    device = &(ds18b20_device_list[dev_num]);
 
     /* write config register  to scratchpad */
-    ds18b20_scratchpad_write(device, 0xAA, 0x87, resolution);
+    if(ds18b20_scratchpad_write(dev_num, 0xAA, 0x87, resolution) != 0)
+	{
+    	return (-1);
+	}
 
     /* read back scratchpad to ensure data integrity */
-    ds18b20_scratchpad_read(device, scratchpad_buffer, 9);    
-
-    if(scratchpad_buffer[DS18B20_SCRATCHPAD_IDX_CONFIG] != resolution)
+    if(ds18b20_scratchpad_read(dev_num, scratchpad_buffer, 9) != 0)
     {
-        return (-1);
-    } 
+		return (-1);
+	}
+
 
     return (0);
 
@@ -167,13 +160,15 @@ int8_t ds18b20_start_conversion(uint8_t dev_num)
 int8_t ds18b20_get_temperature(uint8_t dev_num, float* temperature)
 {
     uint8_t scratchpad_buffer[DS18B20_SCRATCHPAD_IDX_CONFIG+1];
-    float temperature = 0.0f;
     int16_t temp_raw_value;
     uint8_t i;
     uint8_t resolution_bits;
     
     /* read scratchpad until config register*/
-    ds18b20_scratchpad_read(scratchpad_buffer, DS18B20_SCRATCHPAD_IDX_CONFIG+1);   
+    if(ds18b20_scratchpad_read(dev_num, scratchpad_buffer, DS18B20_SCRATCHPAD_IDX_CONFIG+1) != 0)
+    {
+    	return (-1);
+    }
 
     temp_raw_value = (int16_t)((uint16_t)scratchpad_buffer[1] << 8) | scratchpad_buffer[0];
 
@@ -186,9 +181,9 @@ int8_t ds18b20_get_temperature(uint8_t dev_num, float* temperature)
     }
 
     /* calculate temperature in deg C */
-    temperature = ((float)temp_raw_value) / 16.0f;
+    *temperature = ((float)temp_raw_value) / 16.0f;
 
-    return (temperature);
+    return (0);
 
 }
 
@@ -203,7 +198,6 @@ int8_t ds18b20_get_temperature(uint8_t dev_num, float* temperature)
  */
 static int8_t ds18b20_send_command(uint8_t dev_num, uint8_t cmd)
 {
-    uint64_t rom;
 
     if((dev_num >= ds18b20_device_count) && (dev_num != DEV_NUM_BROADCAST))
     {
@@ -223,7 +217,6 @@ static int8_t ds18b20_send_command(uint8_t dev_num, uint8_t cmd)
         else
         {
             uint8_t i = 0;
-            rom = ds18b20_device_list[dev_num].rom;
             
             /* for broadcast commands, skip ROM */
             onewire_send_byte(DS18B20_CMD_ROM_MATCH);
@@ -231,12 +224,11 @@ static int8_t ds18b20_send_command(uint8_t dev_num, uint8_t cmd)
             for(i = 0; i < 8; i++)
             {
                 /* send rom code byte by byte */
-                onewire_send_byte((rom >> i*8) & 0xFF);
+                onewire_send_byte(ds18b20_device_list[dev_num].rom[i]);
             }
 
         }
     }
-
     /* send the actual command */
     onewire_send_byte(cmd);
 
@@ -318,25 +310,27 @@ static int8_t ds18b20_scratchpad_read(uint8_t dev_num, uint8_t* buffer, uint8_t 
  * \details Saves the ROM codes of found devices in device list. 
  *          The search algorithm is derived from Maxim AppNote 187 https://www.maximintegrated.com/en/app-notes/index.mvp/id/187
  */
-static int8_t ds18b20_rom_search(void)
+static uint8_t ds18b20_rom_search(void)
 {
     int8_t last_discrepancy = -1;
     int8_t last_zero = -1;
-    uint64_t rom_buffer = 0;
+    uint8_t rom_buffer[8] = {0};
     uint8_t search_direction = 0;
     uint8_t last_device_flag = 0;
     uint8_t current_bit_pos = 0;
     uint8_t current_bit;
     uint8_t current_bit_comp;
+
     /* begin search algorithm */
 
-    /* reset all slaves and send ROM_SEARCH command*/
-    ds18b20_send_command(DEV_NUM_BROADCAST, DS18B20_CMD_ROM_SEARCH);
 
     while(last_device_flag == 0)
     {
         current_bit_pos = 0;
         last_zero = -1;
+
+        /* reset all slaves and send ROM_SEARCH command*/
+        ds18b20_send_command(DEV_NUM_BROADCAST, DS18B20_CMD_ROM_SEARCH);
 
         while(current_bit_pos < 64)
         {
@@ -377,7 +371,9 @@ static int8_t ds18b20_rom_search(void)
                 }
                 else
                 {   
-                    search_direction = ((rom_buffer & (0x01 << current_bit_pos)) >> current_bit_pos);
+                	/* don't ask... */
+                	/* the cryptic line below just gets the bit in this particular bit position which was found at the last cycle */
+                    search_direction = ((rom_buffer[current_bit_pos / 8] & (0x01 << (current_bit_pos % 8))) >> (current_bit_pos % 8));
                 }
                 
                 if (search_direction == 0)
@@ -386,16 +382,22 @@ static int8_t ds18b20_rom_search(void)
                 }
             }
 
-            rom_buffer &= ~(0x01 << current_bit_pos);
-            rom_buffer |= (search_direction << current_bit_pos);
+            rom_buffer[current_bit_pos / 8] &= ~(0x01 <<(current_bit_pos % 8));  			/* clear bit on current bit position*/
+            rom_buffer[current_bit_pos / 8] |= (search_direction << (current_bit_pos % 8)); /* set  bit on current bit position to search_direction*/
             onewire_write_bit(search_direction);
-            current_bit++;
+            current_bit_pos++;
         }
 
         /* device found, store ROM-code in list only if it is a DS18B20 temprature sensor*/
-        if((rom_buffer & 0xFF) == DS18B20_ROM_FAMILY_CODE)
+        if(rom_buffer[0] == DS18B20_ROM_FAMILY_CODE)
         {
-            ds18b20_device_list[ds18b20_device_count].rom = rom_buffer;
+        	uint8_t i;
+
+        	for(i = 0; i < 8; i++)
+        	{
+        		ds18b20_device_list[ds18b20_device_count].rom[i] = rom_buffer[i];
+
+        	}
             ds18b20_device_count++;
         }
 
