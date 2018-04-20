@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "ds18b20.h": "c"
+    },
+
+     //"cortex-debug.armToolchainPath": "C:\\Program Files (x86)\\GNU Tools ARM Embedded\\6 2017-q2-update\\bin",
+     "cortex-debug.JLinkGDBServerPath": "C:\\Program Files (x86)\\SEGGER\\JLink_V620f\\JLinkGDBServer.exe"
+}   

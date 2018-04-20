@@ -90,7 +90,7 @@ int8_t ssd1306_hal_send_command(uint8_t cmd)
  */
 int8_t ssd1306_hal_send_data(uint8_t* data, uint32_t len)
 {
-	uint8_t tx_data[len+1];
+	uint8_t tx_data[129];
 	uint32_t i;
 
 	tx_data[0] = 0x40;  /* memory address to write to */

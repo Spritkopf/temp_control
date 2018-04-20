@@ -19,7 +19,7 @@
 ##
 
 BIN_DIR ?= build
-BINARY = miniblink
+BINARY = temp-control-f4
 OPENCM3_DIR = ../libopencm3
 LDSCRIPT = stm32f407vg.ld
 

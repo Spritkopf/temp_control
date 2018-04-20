@@ -95,7 +95,6 @@ void onewire_hal_usart_deinit(void)
 {
     nvic_disable_irq(USART_IRQ);
     usart_disable(USART_INSTANCE);
-
 }
 
 /*!

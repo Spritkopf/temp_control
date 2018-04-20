@@ -71,18 +71,16 @@ int main(void)
     ds18b20_set_resolution(DEV_NUM_BROADCAST, DS18B20_RES_10B);
 
     ssd1306_set_cursor(0,30);
-    sprintf(buf, "Sensors: %i", sensor_count);
+    sprintf(buf, "Sensors: %lu", sensor_count);
     ssd1306_put_str((char*)buf, font_7x10);
     ssd1306_update();
     while (1) {
         if(button_flag == 1)
         {
-
             /* when button is pressed, turn LED on for a short time (also serves as debouncing) */
             gpio_set(GPIOD, GPIO12);
             delay(300);
             gpio_clear(GPIOD, GPIO12);
-
 
             /* start a measurement on all devices */
             ds18b20_start_conversion(DEV_NUM_BROADCAST);
@@ -91,13 +89,12 @@ int main(void)
 
             for(i = 0; i < sensor_count; i++)
             {
-				ds18b20_get_temperature(i, &temp);
+                ds18b20_get_temperature(i, &temp);
 
-//				sprintf(buf, "%i.%i C", (int)temp, (int)((temp-(int)temp)*1000));
-				sprintf(buf, "%i: %4.2f C", i, temp);
+                sprintf(buf, "%i: %4.2f C", i, temp);
 
-				ssd1306_set_cursor(0,i*12);
-				ssd1306_put_str((char*)buf, font_7x10);
+                ssd1306_set_cursor(0,i*12);
+                ssd1306_put_str((char*)buf, font_7x10);
             }
 
             ssd1306_update();
@@ -114,7 +111,6 @@ int main(void)
 void sys_tick_handler(void)
 {
     tick++;
-
 }
 
 /* sleep for delay milliseconds */
